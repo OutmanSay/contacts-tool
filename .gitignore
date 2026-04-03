@@ -1,4 +1,6 @@
 contacts.db
+contacts.db-shm
+contacts.db-wal
 *.pyc
 __pycache__/
 .DS_Store
