@@ -7,9 +7,9 @@
 ## 解决什么问题
 
 语音输入（ASR）识别中文人名经常出错：
-- "熊欣" 被识别为 "熊鑫"
-- "张麒" 被识别为 "张奇"
-- "刘维" 被识别为 "刘为"
+- "陈曦" 被识别为 "陈希"
+- "赵琦" 被识别为 "赵奇"
+- "林薇" 被识别为 "林为"
 
 传统方案是训练输入法，但太慢。这个工具的思路是：
 1. 维护一个结构化的通讯录（SQLite）
@@ -39,20 +39,20 @@ pip install pypinyin
 python3 contacts_tool.py import /path/to/通讯录目录/
 
 # 搜索联系人
-python3 contacts_tool.py search "张伟"
+python3 contacts_tool.py search "陈曦"
 
 # ASR 纠错
-python3 contacts_tool.py correct "张卫"
-# 输出: ✅ 张卫 → 张伟（模糊匹配）
+python3 contacts_tool.py correct "陈希"
+# 输出: ✅ 陈希 → 陈曦（拼音匹配）
 
 # 记录误识别映射（下次直接命中）
-python3 contacts_tool.py alias "张伟" "张卫"
+python3 contacts_tool.py alias "陈曦" "陈希"
 
 # 手动添加联系人
-python3 contacts_tool.py add "李明" --group personal --phone "138-0000-0000" --note "大学同学"
+python3 contacts_tool.py add "周然" --group personal --phone "138-0000-0000" --note "大学同学"
 
 # 查看详情
-python3 contacts_tool.py get "张伟"
+python3 contacts_tool.py get "陈曦"
 
 # 统计
 python3 contacts_tool.py stats
@@ -65,7 +65,7 @@ python3 contacts_tool.py stats
 ```markdown
 | 姓名 | 职位 | 手机 | 邮箱 |
 |------|------|------|------|
-| 张伟 | 产品经理 | 138-0000-0000 | zhangwei@example.com |
+| 陈曦 | 产品经理 | 138-0000-0000 | chenxi@example.com |
 ```
 
 自动识别的列名：姓名、员工编号、一事通ID、职位、座机、IP电话、手机、邮箱、岗位描述
@@ -73,33 +73,33 @@ python3 contacts_tool.py stats
 ### 格式 2：Markdown 列表
 
 ```markdown
-### 1. 张伟
+### 1. 陈曦
 - 职位：产品经理
 - 手机：138-0000-0000
-- 邮箱：zhangwei@example.com
+- 邮箱：chenxi@example.com
 ```
 
 ## ASR 纠错原理
 
 ```
-用户语音输入 "堂桥说要开会"
+用户语音输入 "汤乔说要开会"
          ↓
-contacts_tool.py correct "堂桥"
+contacts_tool.py correct "汤乔"
          ↓
 1. 查 aliases 表（已知映射，毫秒级）     → 命中则直接返回
 2. 精确匹配 contacts 表                  → 名字本身就对
-3. 拼音匹配（pypinyin，核心）            → 堂桥(táng qiáo) = 唐巧(táng qiǎo) ✅
+3. 拼音匹配（pypinyin，核心）            → 汤乔(tāng qiáo) ≈ 唐桥(táng qiáo) ✅
 4. 字形模糊匹配（difflib + 同姓优先）    → 补充候选
 5. 合并排序：拼音精确 > 同姓字形 > 拼音相近 > 其他
          ↓
-返回: ✅ 堂桥 → 唐巧（拼音匹配）
+返回: ✅ 汤乔 → 唐桥（拼音匹配）
 ```
 
 **拼音优先**：ASR 最常见的错误是"音对字错"。通过拼音匹配（忽略声调），能准确识别：
-- 妍妍 → 闫岩（yán yán）
-- 熊鑫 → 熊欣（xióng xīn）
+- 延延 → 严言（yán yán）
+- 陈希 → 陈曦（chén xī）
 - 吴茜 → 吴倩（wú qiàn）
-- 堂桥 → 唐巧（táng qiǎo）
+- 汤乔 → 唐桥（táng qiáo）
 
 **同姓优先**：ASR 错误通常只错名不错姓。字形匹配时优先选择同姓的候选人。
 
