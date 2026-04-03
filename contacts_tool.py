@@ -20,6 +20,19 @@ import sqlite3
 import sys
 from pathlib import Path
 
+try:
+    from pypinyin import pinyin, Style
+    HAS_PINYIN = True
+except ImportError:
+    HAS_PINYIN = False
+
+
+def _to_pinyin(name: str) -> str:
+    """将姓名转为拼音字符串（无声调），用于发音匹配。"""
+    if not HAS_PINYIN:
+        return ""
+    return " ".join(p[0] for p in pinyin(name, style=Style.NORMAL))
+
 DB_PATH = Path(os.getenv("CONTACTS_DB", "./contacts.db"))
 
 
@@ -391,55 +404,100 @@ def cmd_correct(args):
         conn.close()
         return 0
 
-    # 3. 模糊匹配 contacts
+    # 3. 收集所有候选名字
     all_names = conn.execute("SELECT DISTINCT name FROM contacts").fetchall()
     name_list = [r["name"] for r in all_names]
 
-    # 也把 aliases 的 real_name 加进来
     all_aliases = conn.execute("SELECT DISTINCT real_name FROM aliases").fetchall()
     for r in all_aliases:
         if r["real_name"] not in name_list:
             name_list.append(r["real_name"])
 
-    close = difflib.get_close_matches(garbled, name_list, n=5, cutoff=0.3)
+    # 4. 拼音匹配（核心：ASR 错字但发音相同/相近）
+    pinyin_matches = _find_pinyin_matches(garbled, name_list)
 
-    # 优先同姓：如果 garbled 的第一个字和某个候选的第一个字相同，优先级更高
-    if close and garbled:
-        same_surname = [n for n in close if n[0] == garbled[0]]
-        diff_surname = [n for n in close if n[0] != garbled[0]]
-        close = same_surname + diff_surname
+    # 5. 字形模糊匹配
+    char_matches = difflib.get_close_matches(garbled, name_list, n=5, cutoff=0.3)
 
-    if close:
-        best = close[0]
+    # 6. 合并结果：拼音精确匹配 > 同姓字形匹配 > 拼音相近 > 其他字形匹配
+    seen = set()
+    ranked = []
+
+    # 拼音完全匹配（最高优先）
+    for name, score in pinyin_matches:
+        if score == 1.0 and name not in seen:
+            ranked.append(name)
+            seen.add(name)
+
+    # 同姓的字形匹配
+    if garbled:
+        for name in char_matches:
+            if name[0] == garbled[0] and name not in seen:
+                ranked.append(name)
+                seen.add(name)
+
+    # 拼音相近匹配
+    for name, score in pinyin_matches:
+        if score < 1.0 and name not in seen:
+            ranked.append(name)
+            seen.add(name)
+
+    # 剩余字形匹配
+    for name in char_matches:
+        if name not in seen:
+            ranked.append(name)
+            seen.add(name)
+
+    if ranked:
+        best = ranked[0]
+        # 判断置信度
+        is_pinyin_exact = any(name == best and score == 1.0 for name, score in pinyin_matches)
         diff_count = sum(a != b for a, b in zip(garbled, best)) if len(garbled) == len(best) else 99
-        if len(close) == 1 or diff_count <= 1:
+
+        if is_pinyin_exact:
+            print(f"✅ {garbled} → {best}（拼音匹配）")
+            if len(ranked) > 1:
+                print(f"   候选: {', '.join(ranked[:3])}")
+        elif len(ranked) == 1 or diff_count <= 1:
             print(f"✅ {garbled} → {best}（模糊匹配）")
-            if len(close) > 1:
-                print(f"   候选: {', '.join(close[:3])}")
+            if len(ranked) > 1:
+                print(f"   候选: {', '.join(ranked[:3])}")
         else:
-            print(f"❓ {garbled} 可能是: {', '.join(close[:3])}")
+            print(f"❓ {garbled} 可能是: {', '.join(ranked[:3])}")
             print(f"   最可能: {best}")
     else:
         print(f"❌ 未找到匹配「{garbled}」的联系人")
-        # 列出拼音相近的（同音字场景）
-        similar = _find_pinyin_similar(garbled, name_list)
-        if similar:
-            print(f"   拼音相近: {', '.join(similar)}")
 
     conn.close()
     return 0
 
 
-def _find_pinyin_similar(query: str, names: list[str]) -> list[str]:
-    """简单的同音字匹配：逐字比较，允许同音替换。"""
-    # 简化版：只比较字数相同的名字，允许 1-2 个字不同
+def _find_pinyin_matches(query: str, names: list[str]) -> list[tuple[str, float]]:
+    """拼音匹配：找发音相同或相近的名字。返回 (name, score) 列表，score 1.0=完全匹配。"""
+    if not HAS_PINYIN:
+        return []
+
+    query_py = _to_pinyin(query)
+    if not query_py:
+        return []
+
     results = []
     for name in names:
-        if len(name) != len(query):
+        name_py = _to_pinyin(name)
+        if not name_py:
             continue
-        diff = sum(1 for a, b in zip(query, name) if a != b)
-        if 0 < diff <= 2:
-            results.append(name)
+
+        if query_py == name_py:
+            # 拼音完全匹配（如 妍妍=闫岩）
+            if query != name:  # 排除自己
+                results.append((name, 1.0))
+        else:
+            # 拼音相近：用 difflib 比较拼音字符串
+            ratio = difflib.SequenceMatcher(None, query_py, name_py).ratio()
+            if ratio >= 0.6:
+                results.append((name, ratio))
+
+    results.sort(key=lambda x: -x[1])
     return results[:5]
 
 
