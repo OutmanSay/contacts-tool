@@ -36,33 +36,33 @@ SCRIPTS=~/.openclaw/workspace/scripts
 
 ```bash
 # 按名字搜索（支持模糊匹配）
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py search "张伟"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py search "陈曦"
 
 # 查看详情
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py get "张伟"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py get "陈曦"
 ```
 
 ### ASR 人名纠错
 
 ```bash
 # 纠正 ASR 识别错误的名字
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py correct "张卫"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py correct "陈希"
 
 # 手动添加误识别映射（持续积累）
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py alias "张伟" "张卫"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py alias "陈曦" "陈希"
 ```
 
 ### 添加联系人
 
 ```bash
 # 添加工作联系人
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py add "李明" --group work --team "产品部" --phone "138-0000-0000"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py add "陈曦" --group work --team "产品部" --phone "138-0000-0000"
 
 # 添加私人联系人
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py add "王芳" --group personal --note "大学同学"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py add "周然" --group personal --note "大学同学"
 
 # 添加孩子相关联系人
-source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py add "张老师" --group kids-school --note "煎包班主任"
+source ~/.openclaw/.env.local && python3 $SCRIPTS/contacts_tool.py add "李老师" --group kids-school --note "孩子班主任"
 ```
 
 ### 导入通讯录
