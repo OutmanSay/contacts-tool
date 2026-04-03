@@ -81,8 +81,7 @@ COLUMN_MAP = {
     "姓名": "name",
     "名字": "name",
     "员工编号": "employee_id",
-    "一事通ID": "employee_id",
-    "一事通id": "employee_id",
+    "工号": "employee_id",
     "职位": "position",
     "座机": "phone",
     "座机/IP电话": "phone",
@@ -106,7 +105,7 @@ def _parse_md_list(filepath: Path) -> list[dict]:
         team = title_match.group(1).strip()
 
     field_map = {
-        "员工编号": "employee_id", "一事通ID": "employee_id", "一事通id": "employee_id",
+        "员工编号": "employee_id", "工号": "employee_id",
         "职位": "position", "手机": "phone", "IP电话": "_landline",
         "座机": "_landline", "邮箱": "email", "岗位描述": "note",
     }
